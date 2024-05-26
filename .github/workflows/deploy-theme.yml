@@ -1,45 +1,16 @@
-name: Update Casper and Deploy to Ghost
-
+name: Deploy Theme
 on:
   push:
     branches:
+      - master
       - main
-
 jobs:
-  update-casper:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - name: Deploy Ghost Theme
+        uses: TryGhost/action-deploy-theme@v1
         with:
-          token: ${{ secrets.GH_TOKEN }}
-
-      - name: Set GitHub user
-        run: |
-          git config --global user.name 'yong2bba'
-          git config --global user.email 'yong2bba@gmail.com'
-
-      - name: Add Casper upstream
-        run: git remote add upstream https://github.com/TryGhost/Casper.git
-
-      - name: Fetch upstream
-        run: git fetch upstream
-
-      - name: Merge upstream changes
-        run: git merge upstream/main --allow-unrelated-histories
-
-      - name: Push changes
-        run: git push origin main
-
-      - name: Zip theme
-        run: zip -r deploy-casper.zip .
-
-      - name: Deploy to Ghost
-        env:
-          GHOST_ADMIN_API_KEY: ${{ secrets.GHOST_ADMIN_API_KEY }}
-          GHOST_ADMIN_API_URL: ${{ secrets.GHOST_ADMIN_API_URL }}
-        run: |
-          curl -X POST "${{ secrets.GHOST_ADMIN_API_URL }}/themes/upload" \
-          -F "file=@deploy-casper.zip" \
-          -H "Authorization: Ghost $GHOST_ADMIN_API_KEY"
+          api-url: ${{ secrets.GHOST_ADMIN_API_URL }}
+          api-key: ${{ secrets.GHOST_ADMIN_API_KEY }}

@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install zip and jq
       run: |
@@ -41,7 +41,7 @@ jobs:
         echo "Found theme file: $THEME_FILE"
 
         # Ghost Admin API를 통해 테마 업로드
-        RESPONSE=$(curl -s -w "\n%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
+        RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -F "file=@${THEME_FILE}" \
           -H "Content-Type: multipart/form-data")
@@ -76,7 +76,7 @@ jobs:
         fi
 
         # 업로드된 테마를 활성화
-        ACTIVATE_RESPONSE=$(curl -s -w "\n%{http_code}" -o activate_response.json -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
+        ACTIVATE_RESPONSE=$(curl -s -w "%{http_code}" -o activate_response.json -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -H "Content-Type: application/json")
 

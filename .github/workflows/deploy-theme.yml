@@ -15,6 +15,11 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
 
+      - name: Set GitHub user
+        run: |
+          git config --global user.name 'yong2bba'
+          git config --global user.email 'yong2bba@gmail.com'
+
       - name: Add Casper upstream
         run: git remote add upstream https://github.com/TryGhost/Casper.git
 
@@ -25,10 +30,7 @@ jobs:
         run: git merge upstream/main --allow-unrelated-histories
 
       - name: Push changes
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git push origin main
+        run: git push origin main
 
       - name: Zip theme
         run: zip -r deploy-casper.zip .

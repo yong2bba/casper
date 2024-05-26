@@ -1,16 +1,44 @@
-name: Deploy Theme
+name: Deploy Ghost Theme
+
 on:
   push:
     branches:
-      - master
       - main
+    paths:
+      - '**/*' # 모든 파일을 감지
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Deploy Ghost Theme
-        uses: TryGhost/action-deploy-theme@v1
-        with:
-          api-url: ${{ secrets.GHOST_ADMIN_API_URL }}
-          api-key: ${{ secrets.GHOST_ADMIN_API_KEY }}
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install zip
+      run: sudo apt-get install zip -y
+
+    - name: Create ZIP of the theme
+      run: |
+        THEME_NAME="deploy_casper"
+        zip -r ${THEME_NAME}.zip . -x ".git/*" -x ".github/*"
+
+    - name: Upload Theme to Ghost
+      env:
+        GHOST_ADMIN_API_URL: ${{ secrets.GHOST_ADMIN_API_URL }}
+        GHOST_ADMIN_API_KEY: ${{ secrets.GHOST_ADMIN_API_KEY }}
+      run: |
+        # 테마 파일 찾기
+        THEME_FILE=$(ls *.zip | head -n 1)
+        if [ -z "$THEME_FILE" ]; then
+          echo "No theme file found."
+          exit 1
+        fi
+
+        # Ghost Admin API를 통해 테마 업로드
+        curl -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
+          -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
+          -F "file=@${THEME_FILE}" \
+          -H "Content-Type: multipart/form-data"
+
+        echo "Theme uploaded successfully."

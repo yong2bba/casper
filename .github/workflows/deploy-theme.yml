@@ -15,12 +15,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Install zip
-      run: sudo apt-get install zip -y
+    - name: Install zip and jq
+      run: |
+        sudo apt-get update
+        sudo apt-get install zip jq -y
 
     - name: Create ZIP of the theme
       run: |
-        THEME_NAME="casper-deploy"
+        THEME_NAME="my-theme"
         zip -r ${THEME_NAME}.zip . -x ".git/*" -x ".github/*"
 
     - name: Upload Theme to Ghost
@@ -36,16 +38,22 @@ jobs:
         fi
 
         # Ghost Admin API를 통해 테마 업로드
-        RESPONSE=$(curl -s -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
+        RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -F "file=@${THEME_FILE}" \
           -H "Content-Type: multipart/form-data")
 
-        echo "Upload response: $RESPONSE"
+        HTTP_STATUS=$(tail -n1 <<< "$RESPONSE")
+        if [ "$HTTP_STATUS" -ne 201 ]; then
+          echo "Upload failed with status code $HTTP_STATUS"
+          cat response.json
+          exit 1
+        fi
 
-        THEME_NAME=$(echo $RESPONSE | jq -r '.themes[0].name')
+        THEME_NAME=$(jq -r '.themes[0].name' response.json)
         if [ -z "$THEME_NAME" ]; then
           echo "Failed to get theme name from response."
+          cat response.json
           exit 1
         fi
 

@@ -24,6 +24,7 @@ jobs:
       run: |
         THEME_NAME="my-theme"
         zip -r ${THEME_NAME}.zip . -x ".git/*" -x ".github/*"
+        ls -l ${THEME_NAME}.zip # 생성된 ZIP 파일 리스트 출력
 
     - name: Upload Theme to Ghost
       env:
@@ -36,6 +37,7 @@ jobs:
           echo "No theme file found."
           exit 1
         fi
+        echo "Found theme file: $THEME_FILE"
 
         # Ghost Admin API를 통해 테마 업로드
         RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
@@ -50,17 +52,36 @@ jobs:
           exit 1
         fi
 
+        cat response.json # 응답 내용 출력
         THEME_NAME=$(jq -r '.themes[0].name' response.json)
         if [ -z "$THEME_NAME" ]; then
           echo "Failed to get theme name from response."
           cat response.json
           exit 1
         fi
+        echo "Theme name from response: $THEME_NAME"
+
+    - name: Activate uploaded theme
+      env:
+        GHOST_ADMIN_API_URL: ${{ secrets.GHOST_ADMIN_API_URL }}
+        GHOST_ADMIN_API_KEY: ${{ secrets.GHOST_ADMIN_API_KEY }}
+      run: |
+        THEME_NAME=$(jq -r '.themes[0].name' response.json)
+        if [ -z "$THEME_NAME" ]; then
+          echo "Failed to get theme name for activation."
+          exit 1
+        fi
 
         # 업로드된 테마를 활성화
-        ACTIVATE_RESPONSE=$(curl -s -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
+        ACTIVATE_RESPONSE=$(curl -s -w "%{http_code}" -o activate_response.json -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -H "Content-Type: application/json")
 
-        echo "Activate response: $ACTIVATE_RESPONSE"
+        ACTIVATE_HTTP_STATUS=$(tail -n1 <<< "$ACTIVATE_RESPONSE")
+        if [ "$ACTIVATE_HTTP_STATUS" -ne 200 ]; then
+          echo "Activation failed with status code $ACTIVATE_HTTP_STATUS"
+          cat activate_response.json
+          exit 1
+        fi
 
+        echo "Activate response: $(cat activate_response.json)"

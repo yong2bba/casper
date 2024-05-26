@@ -24,7 +24,8 @@ jobs:
       run: |
         THEME_NAME="my-theme"
         zip -r ${THEME_NAME}.zip . -x ".git/*" -x ".github/*"
-        ls -l ${THEME_NAME}.zip # 생성된 ZIP 파일 리스트 출력
+        echo "Created ZIP file:"
+        ls -l ${THEME_NAME}.zip
 
     - name: Upload Theme to Ghost
       env:
@@ -40,19 +41,21 @@ jobs:
         echo "Found theme file: $THEME_FILE"
 
         # Ghost Admin API를 통해 테마 업로드
-        RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" -o response.json -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -F "file=@${THEME_FILE}" \
           -H "Content-Type: multipart/form-data")
 
-        HTTP_STATUS=$(tail -n1 <<< "$RESPONSE")
+        HTTP_STATUS=$(tail -n1 response.json)
         if [ "$HTTP_STATUS" -ne 201 ]; then
           echo "Upload failed with status code $HTTP_STATUS"
           cat response.json
           exit 1
         fi
 
-        cat response.json # 응답 내용 출력
+        echo "Upload successful. Response:"
+        cat response.json
+
         THEME_NAME=$(jq -r '.themes[0].name' response.json)
         if [ -z "$THEME_NAME" ]; then
           echo "Failed to get theme name from response."
@@ -73,15 +76,16 @@ jobs:
         fi
 
         # 업로드된 테마를 활성화
-        ACTIVATE_RESPONSE=$(curl -s -w "%{http_code}" -o activate_response.json -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
+        ACTIVATE_RESPONSE=$(curl -s -w "\n%{http_code}" -o activate_response.json -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -H "Content-Type: application/json")
 
-        ACTIVATE_HTTP_STATUS=$(tail -n1 <<< "$ACTIVATE_RESPONSE")
+        ACTIVATE_HTTP_STATUS=$(tail -n1 activate_response.json)
         if [ "$ACTIVATE_HTTP_STATUS" -ne 200 ]; then
           echo "Activation failed with status code $ACTIVATE_HTTP_STATUS"
           cat activate_response.json
           exit 1
         fi
 
-        echo "Activate response: $(cat activate_response.json)"
+        echo "Activate response:"
+        cat activate_response.json

@@ -20,7 +20,7 @@ jobs:
 
     - name: Create ZIP of the theme
       run: |
-        THEME_NAME="deploy_casper"
+        THEME_NAME="casper-deploy"
         zip -r ${THEME_NAME}.zip . -x ".git/*" -x ".github/*"
 
     - name: Upload Theme to Ghost
@@ -36,9 +36,23 @@ jobs:
         fi
 
         # Ghost Admin API를 통해 테마 업로드
-        curl -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
+        RESPONSE=$(curl -s -X POST "${GHOST_ADMIN_API_URL}/themes/upload/" \
           -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
           -F "file=@${THEME_FILE}" \
-          -H "Content-Type: multipart/form-data"
+          -H "Content-Type: multipart/form-data")
 
-        echo "Theme uploaded successfully."
+        echo "Upload response: $RESPONSE"
+
+        THEME_NAME=$(echo $RESPONSE | jq -r '.themes[0].name')
+        if [ -z "$THEME_NAME" ]; then
+          echo "Failed to get theme name from response."
+          exit 1
+        fi
+
+        # 업로드된 테마를 활성화
+        ACTIVATE_RESPONSE=$(curl -s -X PUT "${GHOST_ADMIN_API_URL}/themes/${THEME_NAME}/activate" \
+          -H "Authorization: Ghost ${GHOST_ADMIN_API_KEY}" \
+          -H "Content-Type: application/json")
+
+        echo "Activate response: $ACTIVATE_RESPONSE"
+
